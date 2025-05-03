@@ -78,9 +78,3 @@ sudo apt install wget tar
 **3. No puedes acceder al RTSP desde otro dispositivo**  
 *Solución:* Comprueba que el puerto `8554` no está bloqueado por el firewall.
 
----
-
-## Archivo PDF de ayuda
-
-Puedes consultar la guía completa en PDF aquí:  
-[Guía de instalación de mediamtx (RTSP)](https://github.com/prerico/Mediamtx/releases/latest/download/Guia_instalacion_mediamtx.pdf)
