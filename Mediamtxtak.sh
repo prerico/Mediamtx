@@ -1,46 +1,56 @@
 #!/bin/bash
 
-# Actualizar el sistema
-sudo apt update -y
-sudo apt upgrade -y
+# Variables
+MEDIAMTX_VERSION="latest"
+INSTALL_DIR="/usr/local/bin"
+CONFIG_FILE="/etc/mediamtx.yml"
+SERVICE_FILE="/etc/systemd/system/mediamtx.service"
 
 # Instalar dependencias
-sudo apt install -y build-essential cmake libssl-dev libboost-all-dev pkg-config git
+sudo apt update && sudo apt install -y wget tar
 
-# Descargar mediamtx desde el repositorio de GitHub
-git clone https://github.com/bluenviron/mediamtx.git
-cd mediamtx
+# Descargar última versión de mediamtx
+echo "Descargando mediamtx..."
+cd /tmp
+wget https://github.com/bluenviron/mediamtx/releases/$MEDIAMTX_VERSION/download/mediamtx_linux_amd64.tar.gz -O mediamtx.tar.gz
+tar -xzf mediamtx.tar.gz
 
-# Crear directorios necesarios
-mkdir build
-cd build
+# Mover ejecutable
+sudo mv mediamtx $INSTALL_DIR
+sudo chmod +x $INSTALL_DIR/mediamtx
 
-# Compilar mediamtx
-cmake ..
-make
-sudo make install
+# Crear archivo de configuración básico habilitando RTSP
+echo "Creando archivo de configuración..."
+sudo tee $CONFIG_FILE > /dev/null <<EOF
+rtsp:
+  enabled: yes
+EOF
 
-# Habilitar RTSP en la configuración
-echo "Configurando mediamtx para habilitar RTSP..."
+# Crear servicio systemd
+echo "Creando servicio systemd..."
+sudo tee $SERVICE_FILE > /dev/null <<EOF
+[Unit]
+Description=mediamtx RTSP Server
+After=network.target
 
-# Copiar el archivo de configuración por defecto
-cd ..
-cp config.yml.example config.yml
+[Service]
+ExecStart=$INSTALL_DIR/mediamtx $CONFIG_FILE
+Restart=always
+User=root
+WorkingDirectory=$INSTALL_DIR
 
-# Editar la configuración para habilitar RTSP
-sed -i 's/rtsp: disabled/rtsp: enabled/' config.yml
+[Install]
+WantedBy=multi-user.target
+EOF
 
-# Iniciar mediamtx
-echo "Iniciando mediamtx..."
-./build/mediamtx config.yml
+# Recargar systemd y habilitar servicio
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable mediamtx
+sudo systemctl start mediamtx
 
-# Información sobre RTSP
-echo ""
-echo "### Información para emitir en RTSP ###"
-echo "Para emitir en RTSP, utilice la siguiente dirección:"
-echo "rtsp://<IP_del_servidor>:8554/stream"
-echo "Por ejemplo, si la IP de su servidor es 192.168.1.100, la dirección será:"
-echo "rtsp://192.168.1.100:8554/stream"
-echo ""
-
-echo "Instalación y configuración completadas. Ahora puede emitir en RTSP."
+# Mostrar información de RTSP
+IP=$(hostname -I | awk '{print $1}')
+echo "Instalación completa."
+echo "Puedes emitir en RTSP a esta dirección:"
+echo "  rtsp://$IP:8554/mystream"
